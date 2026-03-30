@@ -65,6 +65,10 @@ function resetForm() {
 }
 
 // ---- Rich text renderer ----
+function stripBoldMarkers(text) {
+  return text.replace(/\*\*/g, '');
+}
+
 function renderRichText(content) {
   const lines = content.split('\n');
   let html = '';
@@ -73,11 +77,20 @@ function renderRichText(content) {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
+    // Heading: ## or ### or **ALL CAPS HEADING** on its own line
     if (trimmed.startsWith('## ') || trimmed.startsWith('### ')) {
       const text = trimmed.replace(/^#+\s*/, '');
+      html += `<div class="heading">${escapeHtml(stripBoldMarkers(text))}</div>`;
+    } else if (/^\*\*[^*]+\*\*$/.test(trimmed) && trimmed.length < 80) {
+      // Standalone **bold line** = treat as heading
+      const text = trimmed.slice(2, -2);
       html += `<div class="heading">${escapeHtml(text)}</div>`;
-    } else if (trimmed.startsWith('•') || trimmed.startsWith('- ')) {
-      const text = trimmed.replace(/^[•\-]\s*/, '');
+    } else if (trimmed.startsWith('•') || trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+      const text = trimmed.replace(/^[•\-\*]\s*/, '');
+      html += `<div class="bullet"><span>${renderBold(text)}</span></div>`;
+    } else if (/^\d+[\.\)]\s/.test(trimmed)) {
+      // Numbered list: 1. or 1)
+      const text = trimmed.replace(/^\d+[\.\)]\s*/, '');
       html += `<div class="bullet"><span>${renderBold(text)}</span></div>`;
     } else {
       html += `<div class="paragraph">${renderBold(trimmed)}</div>`;
@@ -145,14 +158,30 @@ function buildPalaceGrid(palaces) {
   }).join('');
 }
 
+function toggleAccordion(header) {
+  const card = header.parentElement;
+  const wasCollapsed = card.classList.contains('collapsed');
+
+  // Close all other cards
+  document.querySelectorAll('.analysis-card').forEach(c => c.classList.add('collapsed'));
+
+  // Toggle clicked card
+  if (wasCollapsed) {
+    card.classList.remove('collapsed');
+    // Smooth scroll to card
+    setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  }
+}
+
 function addAnalysisPart(index, part) {
   const container = document.getElementById('analysis-parts');
   const card = document.createElement('div');
-  card.className = 'analysis-card fade-in';
+  // All collapsed by default
+  card.className = 'analysis-card fade-in collapsed';
   card.style.animationDelay = (index * 0.1) + 's';
 
   card.innerHTML = `
-    <div class="analysis-header" onclick="this.parentElement.classList.toggle('collapsed')">
+    <div class="analysis-header" onclick="toggleAccordion(this)">
       <span class="analysis-icon">${part.icon}</span>
       <div>
         <div class="analysis-title">${escapeHtml(part.title)}</div>
