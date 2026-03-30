@@ -181,12 +181,7 @@ function updateProgress(step, total, message, sub, subTotal) {
 
   fill.style.width = Math.min(pct, 100) + '%';
   title.textContent = message;
-
-  if (step === 2 && sub !== undefined && subTotal) {
-    msg.textContent = `Phân tích AI: ${sub + 1}/${subTotal} phần`;
-  } else {
-    msg.textContent = `Bước ${step}/${total}`;
-  }
+  msg.textContent = `Bước ${step}/${total}`;
 
   steps.forEach(s => {
     const sStep = parseInt(s.dataset.step);

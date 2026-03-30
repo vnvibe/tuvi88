@@ -98,20 +98,12 @@ const ANALYSIS_SECTIONS: AnalysisSection[] = [
   },
 ];
 
-export async function analyzeAllParts(
+async function analyzeSinglePart(
+  section: AnalysisSection,
   astroData: string,
   userInfo: UserInfo,
-  onProgress: (partIndex: number, totalParts: number) => Promise<void>,
-): Promise<AnalysisPart[]> {
-  const results: AnalysisPart[] = [];
-
-  for (let i = 0; i < ANALYSIS_SECTIONS.length; i++) {
-    const section = ANALYSIS_SECTIONS[i];
-    await onProgress(i, ANALYSIS_SECTIONS.length);
-
-    logger.ai(`Phân tích phần ${i + 1}/${ANALYSIS_SECTIONS.length}: ${section.title}`);
-
-    const userPrompt = `Thông tin người xem:
+): Promise<AnalysisPart> {
+  const userPrompt = `Thông tin người xem:
 - Họ tên: ${userInfo.fullName}
 - Giới tính: ${userInfo.gender === 'male' ? 'Nam' : 'Nữ'}
 - Ngày sinh: ${userInfo.birthDate}
@@ -123,37 +115,50 @@ ${astroData}
 
 YÊU CẦU: ${section.prompt}`;
 
-    try {
-      const response = await client.chat.completions.create({
-        model: config.deepseekModel,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: 0.7,
-        max_tokens: 2000,
-      });
+  try {
+    const response = await client.chat.completions.create({
+      model: config.deepseekModel,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.7,
+      max_tokens: 1500,
+    });
 
-      const content = response.choices[0]?.message?.content || 'Không có dữ liệu phân tích.';
-
-      results.push({
-        title: section.title,
-        icon: section.icon,
-        description: section.description,
-        content,
-      });
-
-      logger.success(`Hoàn thành phần ${i + 1}: ${section.title}`);
-    } catch (error: any) {
-      logger.error(`Lỗi phân tích phần ${section.title}: ${error.message}`);
-      results.push({
-        title: section.title,
-        icon: section.icon,
-        description: section.description,
-        content: `Không thể phân tích phần này do lỗi kết nối. Vui lòng thử lại sau.`,
-      });
-    }
+    const content = response.choices[0]?.message?.content || 'Không có dữ liệu phân tích.';
+    return { title: section.title, icon: section.icon, description: section.description, content };
+  } catch (error: any) {
+    logger.error(`Lỗi phân tích phần ${section.title}: ${error.message}`);
+    return {
+      title: section.title,
+      icon: section.icon,
+      description: section.description,
+      content: `Không thể phân tích phần này do lỗi kết nối. Vui lòng thử lại sau.`,
+    };
   }
+}
+
+export async function analyzeAllParts(
+  astroData: string,
+  userInfo: UserInfo,
+  onProgress: (partIndex: number, totalParts: number) => Promise<void>,
+): Promise<AnalysisPart[]> {
+  const total = ANALYSIS_SECTIONS.length;
+  await onProgress(0, total);
+
+  logger.ai(`Phân tích song song ${total} phần...`);
+
+  // Run all 6 parts in parallel
+  const promises = ANALYSIS_SECTIONS.map((section, i) => {
+    logger.ai(`Bắt đầu phần ${i + 1}/${total}: ${section.title}`);
+    return analyzeSinglePart(section, astroData, userInfo);
+  });
+
+  const results = await Promise.all(promises);
+
+  await onProgress(total, total);
+  logger.success(`Hoàn thành tất cả ${total} phần`);
 
   return results;
 }
