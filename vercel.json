@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "buildCommand": "",
+  "outputDirectory": "public",
+  "functions": {
+    "api/tuvi.ts": {
+      "maxDuration": 120
+    }
+  },
+  "rewrites": [
+    { "source": "/api/tuvi", "destination": "/api/tuvi" },
+    { "source": "/(.*)", "destination": "/$1" }
+  ]
+}

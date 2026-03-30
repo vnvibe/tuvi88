@@ -305,7 +305,7 @@ document.getElementById('tuvi-form').addEventListener('submit', async function(e
               break;
 
             case 'complete':
-              updateProgress(4, 4, 'Hoàn thành!');
+              updateProgress(data.total || 3, data.total || 3, 'Hoàn thành!');
 
               if (data.pdfUrl) {
                 document.getElementById('pdf-link').href = data.pdfUrl;
